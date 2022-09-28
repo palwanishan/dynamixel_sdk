@@ -108,7 +108,16 @@ class WINDECLSPEC GroupSyncRead
   /// @return   when the protocol1.0 has been used
   /// @return or the other communication results which come from PacketHandler::syncReadTx
   ////////////////////////////////////////////////////////////////////////////////
-  int     txPacket();
+  int txPacket();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief The function that transmits the Fast Sync Read instruction packet
+  /// @return COMM_NOT_AVAILABLE
+  /// @return   when the list for Sync Read is empty
+  /// @return   when the protocol1.0 has been used
+  /// @return or the other communication results which come from PacketHandler::syncReadTx
+  ////////////////////////////////////////////////////////////////////////////////
+  int fastSyncReadTxPacket();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The function that receives the packet which might be come from the Dynamixel
@@ -119,7 +128,18 @@ class WINDECLSPEC GroupSyncRead
   /// @return   when there is packet recieved
   /// @return or the other communication results
   ////////////////////////////////////////////////////////////////////////////////
-  int     rxPacket();
+  int rxPacket();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief The function that receives the packet which might be come from the Dynamixel
+  /// @return COMM_NOT_AVAILABLE
+  /// @return   when the list for Sync Read is empty
+  /// @return   when the protocol1.0 has been used
+  /// @return COMM_SUCCESS
+  /// @return   when there is packet recieved
+  /// @return or the other communication results
+  ////////////////////////////////////////////////////////////////////////////////
+  int fastSyncReadRxPacket();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The function that transmits and receives the packet which might be come from the Dynamixel
@@ -129,9 +149,21 @@ class WINDECLSPEC GroupSyncRead
   /// @return   when there is no packet recieved
   /// @return COMM_SUCCESS
   /// @return   when there is packet recieved
-  /// @return or the other communication results which come from GroupBulkRead::txPacket or GroupBulkRead::rxPacket
+  /// @return or the other communication results which come from GroupSyncRead::txPacket or GroupSyncRead::rxPacket
   ////////////////////////////////////////////////////////////////////////////////
   int     txRxPacket();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief The function that transmits and receives Fast Sync Read packet
+  /// @return COMM_NOT_AVAILABLE
+  /// @return   when the protocol1.0 has been used
+  /// @return COMM_RX_FAIL
+  /// @return   when there is no packet recieved
+  /// @return COMM_SUCCESS
+  /// @return   when there is packet recieved
+  /// @return or the other communication results which come from GroupSyncRead::txPacket or GroupSyncRead::rxPacket
+  ////////////////////////////////////////////////////////////////////////////////
+  int fastSyncReadTxRxPacket();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The function that checks whether there are available data which might be received by GroupSyncRead::rxPacket or GroupSyncRead::txRxPacket

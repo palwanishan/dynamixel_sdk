@@ -71,7 +71,7 @@ bool GroupSyncRead::addParam(uint8_t id)
   data_list_[id] = new uint8_t[data_length_];
   error_list_[id] = new uint8_t[1];
 
-  is_param_changed_   = true;
+  is_param_changed_ = true;
   return true;
 }
 void GroupSyncRead::removeParam(uint8_t id)
@@ -80,7 +80,7 @@ void GroupSyncRead::removeParam(uint8_t id)
     return;
 
   std::vector<uint8_t>::iterator it = std::find(id_list_.begin(), id_list_.end(), id);
-  if (it == id_list_.end())    // NOT exist
+  if (it == id_list_.end())  // NOT exist
     return;
 
   id_list_.erase(it);
@@ -89,7 +89,7 @@ void GroupSyncRead::removeParam(uint8_t id)
   data_list_.erase(id);
   error_list_.erase(id);
 
-  is_param_changed_   = true;
+  is_param_changed_ = true;
 }
 void GroupSyncRead::clearParam()
 {
@@ -121,6 +121,17 @@ int GroupSyncRead::txPacket()
   return ph_->syncReadTx(port_, start_address_, data_length_, param_, (uint16_t)id_list_.size() * 1);
 }
 
+int GroupSyncRead::fastSyncReadTxPacket()
+{
+  if (ph_->getProtocolVersion() == 1.0 || id_list_.size() == 0)
+    return COMM_NOT_AVAILABLE;
+
+  if (is_param_changed_ == true || param_ == 0)
+    makeParam();
+
+  return ph_->fastSyncReadTx(port_, start_address_, data_length_, param_, (uint16_t)id_list_.size() * 1);
+}
+
 int GroupSyncRead::rxPacket()
 {
   last_result_ = false;
@@ -128,8 +139,8 @@ int GroupSyncRead::rxPacket()
   if (ph_->getProtocolVersion() == 1.0)
     return COMM_NOT_AVAILABLE;
 
-  int cnt            = id_list_.size();
-  int result         = COMM_RX_FAIL;
+  int cnt = (int)id_list_.size();
+  int result = COMM_RX_FAIL;
 
   if (cnt == 0)
     return COMM_NOT_AVAILABLE;
@@ -149,18 +160,70 @@ int GroupSyncRead::rxPacket()
   return result;
 }
 
+int GroupSyncRead::fastSyncReadRxPacket()
+{
+  uint8_t error_list = 0;
+  last_result_ = false;
+
+  if (ph_->getProtocolVersion() == 1.0)
+    return COMM_NOT_AVAILABLE;
+
+  int cnt = (int)id_list_.size();
+  int result = COMM_RX_FAIL;
+  int rx_param_length = (int)((data_length_ + 4) * id_list_.size());
+  uint8_t* rx_packet = (uint8_t*)malloc(rx_param_length);
+
+  if (cnt == 0)
+    return COMM_NOT_AVAILABLE;
+
+  // only ONE status packet is received. Parse once and exit.
+  result = ph_->fastReadRx(port_, BROADCAST_ID, rx_param_length, rx_packet, &error_list);
+  
+  for (int index = 0; index < rx_param_length; )
+  {
+    error_list_[rx_packet[index + 1]][0] = rx_packet[index];
+    for (int param_data = 0; param_data < data_length_; param_data++)
+    {
+      data_list_[rx_packet[index + 1]][param_data] = rx_packet[index + 2 + param_data];
+    }
+    index = index + data_length_ + 4; // Skip CRC
+  }
+
+  if (result == COMM_SUCCESS)
+    last_result_ = true;
+
+  free(rx_packet);
+  return result;
+}
+
 int GroupSyncRead::txRxPacket()
 {
   if (ph_->getProtocolVersion() == 1.0)
     return COMM_NOT_AVAILABLE;
 
-  int result         = COMM_TX_FAIL;
+  int result = COMM_TX_FAIL;
 
   result = txPacket();
   if (result != COMM_SUCCESS)
     return result;
 
   return rxPacket();
+}
+
+int GroupSyncRead::fastSyncReadTxRxPacket()
+{
+  if (ph_->getProtocolVersion() == 1.0)
+    return COMM_NOT_AVAILABLE;
+
+  int result = COMM_TX_FAIL;
+
+  result = fastSyncReadTxPacket();
+  if (result != COMM_SUCCESS)
+  {
+    return result;
+  }
+
+  return fastSyncReadRxPacket();
 }
 
 bool GroupSyncRead::isAvailable(uint8_t id, uint16_t address, uint16_t data_length)
