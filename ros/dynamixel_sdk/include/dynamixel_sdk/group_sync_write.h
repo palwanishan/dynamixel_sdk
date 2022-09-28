@@ -22,34 +22,34 @@
 #ifndef DYNAMIXEL_SDK_INCLUDE_DYNAMIXEL_SDK_GROUPSYNCWRITE_H_
 #define DYNAMIXEL_SDK_INCLUDE_DYNAMIXEL_SDK_GROUPSYNCWRITE_H_
 
-
 #include <map>
 #include <vector>
 #include "port_handler.h"
 #include "packet_handler.h"
 
+
 namespace dynamixel
 {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief The class for writing multiple Dynamixel data from same address with same length at once
+/// @brief Class for writing to same address range for multiple DYNAMIXEL
 ////////////////////////////////////////////////////////////////////////////////
 class WINDECLSPEC GroupSyncWrite
 {
  private:
-  PortHandler    *port_;
-  PacketHandler  *ph_;
+  PortHandler *port_;
+  PacketHandler *ph_;
 
-  std::vector<uint8_t>            id_list_;
-  std::map<uint8_t, uint8_t* >    data_list_; // <id, data>
+  std::vector<uint8_t> id_list_;
+  std::map<uint8_t, uint8_t* > data_list_; // <id, data>
 
-  bool            is_param_changed_;
+  bool is_param_changed_;
 
-  uint8_t        *param_;
-  uint16_t        start_address_;
-  uint16_t        data_length_;
+  uint8_t *param_;
+  uint16_t start_address_;
+  uint16_t data_length_;
 
-  void    makeParam();
+  void makeParam();
 
  public:
   ////////////////////////////////////////////////////////////////////////////////
@@ -70,29 +70,40 @@ class WINDECLSPEC GroupSyncWrite
   /// @brief The function that returns PortHandler instance
   /// @return PortHandler instance
   ////////////////////////////////////////////////////////////////////////////////
-  PortHandler     *getPortHandler()   { return port_; }
+  PortHandler *getPortHandler() { return port_; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The function that returns PacketHandler instance
   /// @return PacketHandler instance
   ////////////////////////////////////////////////////////////////////////////////
-  PacketHandler   *getPacketHandler() { return ph_; }
+  PacketHandler *getPacketHandler() { return ph_; }
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief The function that adds id, start_address, data_length to the Sync Write list
+  /// @brief The function that adds id, data to the Sync Write list
   /// @param id Dynamixel ID
-  /// @param data Data for write
+  /// @param data Data to write(Must be converted with Little Endian)
   /// @return false
-  /// @return   when the ID exists already in the list
+  /// @return   when the param for the same ID already exists
   /// @return or true
   ////////////////////////////////////////////////////////////////////////////////
-  bool    addParam    (uint8_t id, uint8_t *data);
+  bool addParam(uint8_t id, uint8_t *data);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief The function that adds id, data, length to the Sync Write list
+  /// @param id Dynamixel ID
+  /// @param data Data to write(Automatically converted to Little Endian)
+  /// @param length Length of data to write
+  /// @return false
+  /// @return   when the param for the same ID already exists
+  /// @return or true
+  ////////////////////////////////////////////////////////////////////////////////
+  bool addParam(uint8_t id, uint8_t* data, uint16_t length);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The function that removes id from the Sync Write list
   /// @param id Dynamixel ID
   ////////////////////////////////////////////////////////////////////////////////
-  void    removeParam (uint8_t id);
+  void removeParam(uint8_t id);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The function that changes the data for write in id -> start_address -> data_length to the Sync Write list
@@ -102,12 +113,12 @@ class WINDECLSPEC GroupSyncWrite
   /// @return   when the ID doesn't exist in the list
   /// @return or true
   ////////////////////////////////////////////////////////////////////////////////
-  bool    changeParam (uint8_t id, uint8_t *data);
+  bool changeParam(uint8_t id, uint8_t *data);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The function that clears the Sync Write list
   ////////////////////////////////////////////////////////////////////////////////
-  void    clearParam  ();
+  void clearParam();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The function that transmits the Sync Write instruction packet which might be constructed by GroupSyncWrite::addParam function
@@ -115,7 +126,7 @@ class WINDECLSPEC GroupSyncWrite
   /// @return   when the list for Sync Write is empty
   /// @return or the other communication results which come from PacketHandler::syncWriteTxOnly
   ////////////////////////////////////////////////////////////////////////////////
-  int     txPacket();
+  int txPacket();
 };
 
 }

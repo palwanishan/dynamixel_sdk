@@ -103,7 +103,7 @@ class WINDECLSPEC Protocol1PacketHandler : public PacketHandler
   /// @return   when rxpacket passes checksum test
   /// @return or COMM_RX_FAIL
   ////////////////////////////////////////////////////////////////////////////////
-  int rxPacket        (PortHandler *port, uint8_t *rxpacket);
+  int rxPacket        (PortHandler *port, uint8_t *rxpacket, bool fast_option = 0);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The function that transmits packet (txpacket) and receives packet (rxpacket) during designated time via PortHandler port
@@ -228,6 +228,7 @@ class WINDECLSPEC Protocol1PacketHandler : public PacketHandler
   ////////////////////////////////////////////////////////////////////////////////
   int readRx          (PortHandler *port, uint8_t id, uint16_t length, uint8_t *data, uint8_t *error = 0);
 
+  int fastReadRx(PortHandler* port, uint8_t id, uint16_t length, uint8_t* data, uint8_t* error = 0);
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The function that transmits INST_READ instruction packet, and read data from received packet
   /// @description The function makes an instruction packet with INST_READ,
@@ -491,9 +492,20 @@ class WINDECLSPEC Protocol1PacketHandler : public PacketHandler
   /// @param param_length Length of the data for Sync Read
   /// @return COMM_NOT_AVAILABLE
   ////////////////////////////////////////////////////////////////////////////////
-  int syncReadTx      (PortHandler *port, uint16_t start_address, uint16_t data_length, uint8_t *param, uint16_t param_length);
+  int syncReadTx(PortHandler* port, uint16_t start_address, uint16_t data_length, uint8_t* param, uint16_t param_length);
   // SyncReadRx   -> GroupSyncRead class
   // SyncReadTxRx -> GroupSyncRead class
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief (Available only in Protocol 2.0) The function that transmits Fast Sync Read instruction packet
+  /// @param port PortHandler instance
+  /// @param start_address Address of the data for Fast Sync Read
+  /// @param data_length Length of the data for Fast Sync Read
+  /// @param param Parameter for Fast Sync Read
+  /// @param param_length Length of the data for Fast Sync Read
+  /// @return COMM_NOT_AVAILABLE
+  ////////////////////////////////////////////////////////////////////////////////
+  int fastSyncReadTx(PortHandler *port, uint16_t start_address, uint16_t data_length, uint8_t *param, uint16_t param_length);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The function that transmits Sync Write instruction packet

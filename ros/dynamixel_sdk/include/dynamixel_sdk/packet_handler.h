@@ -35,8 +35,10 @@
 #include <vector>
 #include "port_handler.h"
 
-#define BROADCAST_ID        0xFE    // 254
-#define MAX_ID              0xFC    // 252
+#define BROADCAST_ID 0xFE
+#define MAX_ID 0xFC
+#define ENABLE_FAST_OPTION true
+#define DISABLE_FAST_OPTION false
 
 /* Macro for Control Table Value */
 #define DXL_MAKEWORD(a, b)  ((uint16_t)(((uint8_t)(((uint64_t)(a)) & 0xff)) | ((uint16_t)((uint8_t)(((uint64_t)(b)) & 0xff))) << 8))
@@ -53,14 +55,15 @@
 #define INST_REG_WRITE          4
 #define INST_ACTION             5
 #define INST_FACTORY_RESET      6
-#define INST_SYNC_WRITE         131     // 0x83
-#define INST_BULK_READ          146     // 0x92
+#define INST_SYNC_WRITE         131  // 0x83
+#define INST_BULK_READ          146  // 0x92
 // --- Only for 2.0 --- //
 #define INST_REBOOT             8
-#define INST_CLEAR              16      // 0x10
-#define INST_STATUS             85      // 0x55
-#define INST_SYNC_READ          130     // 0x82
-#define INST_BULK_WRITE         147     // 0x93
+#define INST_CLEAR              16   // 0x10
+#define INST_STATUS             85   // 0x55
+#define INST_SYNC_READ          130  // 0x82
+#define INST_FAST_SYNC_READ     138  //0x8A
+#define INST_BULK_WRITE         147  // 0x93
 
 // Communication Result
 #define COMM_SUCCESS        0       // tx or rx packet communication success
@@ -149,7 +152,7 @@ class WINDECLSPEC PacketHandler
   /// @return   when rxpacket passes checksum test
   /// @return or COMM_RX_FAIL
   ////////////////////////////////////////////////////////////////////////////////
-  virtual int rxPacket        (PortHandler *port, uint8_t *rxpacket) = 0;
+  virtual int rxPacket        (PortHandler *port, uint8_t *rxpacket, bool fast_option = 0) = 0;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The function that transmits packet (txpacket) and receives packet (rxpacket) during designated time via PortHandler port
@@ -281,6 +284,8 @@ class WINDECLSPEC PacketHandler
   /// @return communication results which come from PacketHandler::rxPacket()
   ////////////////////////////////////////////////////////////////////////////////
   virtual int readRx          (PortHandler *port, uint8_t id, uint16_t length, uint8_t *data, uint8_t *error = 0) = 0;
+
+  virtual int fastReadRx(PortHandler* port, uint8_t id, uint16_t length, uint8_t* data, uint8_t* error = 0) = 0;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The function that transmits INST_READ instruction packet, and read data from received packet
@@ -547,10 +552,22 @@ class WINDECLSPEC PacketHandler
   /// @param param_length Length of the data for Sync Read
   /// @return communication results which come from PacketHandler::txPacket()
   ////////////////////////////////////////////////////////////////////////////////
-  virtual int syncReadTx      (PortHandler *port, uint16_t start_address, uint16_t data_length, uint8_t *param, uint16_t param_length) = 0;
+  virtual int syncReadTx(PortHandler* port, uint16_t start_address, uint16_t data_length, uint8_t* param, uint16_t param_length) = 0;
   // SyncReadRx   -> GroupSyncRead class
   // SyncReadTxRx -> GroupSyncRead class
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief The function that transmits INST_FAST_SYNC_READ instruction packet
+  /// @description The function makes an instruction packet with INST_FAST_SYNC_READ,
+  /// @description transmits the packet with PacketHandler::txPacket().
+  /// @param port PortHandler instance
+  /// @param start_address Address of the data for Sync Read
+  /// @param data_length Length of the data for Sync Read
+  /// @param param Parameter for Sync Read
+  /// @param param_length Length of the data for Sync Read
+  /// @return communication results which come from PacketHandler::txPacket()
+  ////////////////////////////////////////////////////////////////////////////////
+  virtual int fastSyncReadTx(PortHandler* port, uint16_t start_address, uint16_t data_length, uint8_t* param, uint16_t param_length) = 0;
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The function that transmits INST_SYNC_WRITE instruction packet
   /// @description The function makes an instruction packet with INST_SYNC_WRITE,

@@ -71,11 +71,47 @@ bool GroupSyncWrite::addParam(uint8_t id, uint8_t *data)
     return false;
 
   id_list_.push_back(id);
-  data_list_[id]    = new uint8_t[data_length_];
+  data_list_[id] = new uint8_t[data_length_];
   for (int c = 0; c < data_length_; c++)
     data_list_[id][c] = data[c];
 
-  is_param_changed_   = true;
+  is_param_changed_ = true;
+  return true;
+}
+
+bool GroupSyncWrite::addParam(uint8_t id, uint8_t* data, uint16_t length)
+{
+  //TODO: Use vector for appending multiple data
+  //if (std::find(SyncParam.begin()->id, SyncParam.end()->id, id) != SyncParam.end()->id)
+  if (std::find(id_list_.begin(), id_list_.end(), id) != id_list_.end())   // id already exist
+    return false;
+
+  id_list_.push_back(id);
+  data_list_[id] = new uint8_t[data_length_];
+
+  if (length == 4)
+  {
+    // Little Endian conversion
+    data_list_[id][0] = data[3];
+    data_list_[id][1] = data[2];
+    data_list_[id][2] = data[1];
+    data_list_[id][3] = data[0];
+  }
+  else if (length == 2) {
+    data_list_[id][0] = data[1];
+    data_list_[id][1] = data[0];
+  }
+  else if (length == 1) {
+    data_list_[id][0] = data[0];
+  }
+  else {
+    // invalid data length
+    return false;
+  }
+  for (int c = 0; c < data_length_; c++)
+    data_list_[id][c] = data[c];
+
+  is_param_changed_ = true;
   return true;
 }
 
@@ -89,7 +125,7 @@ void GroupSyncWrite::removeParam(uint8_t id)
   delete[] data_list_[id];
   data_list_.erase(id);
 
-  is_param_changed_   = true;
+  is_param_changed_ = true;
 }
 
 bool GroupSyncWrite::changeParam(uint8_t id, uint8_t *data)
@@ -99,11 +135,11 @@ bool GroupSyncWrite::changeParam(uint8_t id, uint8_t *data)
     return false;
 
   delete[] data_list_[id];
-  data_list_[id]    = new uint8_t[data_length_];
+  data_list_[id] = new uint8_t[data_length_];
   for (int c = 0; c < data_length_; c++)
     data_list_[id][c] = data[c];
 
-  is_param_changed_   = true;
+  is_param_changed_ = true;
   return true;
 }
 
@@ -130,5 +166,5 @@ int GroupSyncWrite::txPacket()
   if (is_param_changed_ == true || param_ == 0)
     makeParam();
 
-  return ph_->syncWriteTxOnly(port_, start_address_, data_length_, param_, id_list_.size() * (1 + data_length_));
+  return ph_->syncWriteTxOnly(port_, start_address_, data_length_, param_, (uint16_t)(id_list_.size() * (1 + data_length_)));
 }

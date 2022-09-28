@@ -304,12 +304,16 @@ int Protocol2PacketHandler::txPacket(PortHandler *port, uint8_t *txpacket)
   return COMM_SUCCESS;
 }
 
-int Protocol2PacketHandler::rxPacket(PortHandler *port, uint8_t *rxpacket)
+int Protocol2PacketHandler::rxPacket(PortHandler *port, uint8_t *rxpacket, bool fast_option)
 {
   int     result         = COMM_TX_FAIL;
 
   uint16_t rx_length     = 0;
   uint16_t wait_length   = 11; // minimum length (HEADER0 HEADER1 HEADER2 RESERVED ID LENGTH_L LENGTH_H INST ERROR CRC16_L CRC16_H)
+  uint8_t packet_id = 0xFC;
+  if (fast_option == true) {
+    packet_id = BROADCAST_ID;
+  }
 
   while(true)
   {
@@ -325,12 +329,14 @@ int Protocol2PacketHandler::rxPacket(PortHandler *port, uint8_t *rxpacket)
           break;
       }
 
-      if (idx == 0)   // found at the beginning of the packet
+      // if packet header is found in the buffer
+      // check if other packets are correct
+      if (idx == 0)
       {
         if (rxpacket[PKT_RESERVED] != 0x00 ||
-           rxpacket[PKT_ID] > 0xFC ||
-           DXL_MAKEWORD(rxpacket[PKT_LENGTH_L], rxpacket[PKT_LENGTH_H]) > RXPACKET_MAX_LEN ||
-           rxpacket[PKT_INSTRUCTION] != 0x55)
+          rxpacket[PKT_ID] > packet_id ||
+          DXL_MAKEWORD(rxpacket[PKT_LENGTH_L], rxpacket[PKT_LENGTH_H]) > RXPACKET_MAX_LEN ||
+          rxpacket[PKT_INSTRUCTION] != 0x55)
         {
           // remove the first byte in the packet
           for (uint16_t s = 0; s < rx_length - 1; s++)
@@ -384,7 +390,9 @@ int Protocol2PacketHandler::rxPacket(PortHandler *port, uint8_t *rxpacket)
       {
         // remove unnecessary packets
         for (uint16_t s = 0; s < rx_length - idx; s++)
+        {
           rxpacket[s] = rxpacket[idx + s];
+        }
         //memcpy(&rxpacket[0], &rxpacket[idx], rx_length - idx);
         rx_length -= idx;
       }
@@ -413,7 +421,7 @@ int Protocol2PacketHandler::rxPacket(PortHandler *port, uint8_t *rxpacket)
   }
   port->is_using_ = false;
 
-  if (result == COMM_SUCCESS)
+  if (result == COMM_SUCCESS && fast_option == false)
     removeStuffing(rxpacket);
 
   return result;
@@ -704,6 +712,34 @@ int Protocol2PacketHandler::readRx(PortHandler *port, uint8_t id, uint16_t lengt
   return result;
 }
 
+int Protocol2PacketHandler::fastReadRx(PortHandler* port, uint8_t id, uint16_t length, uint8_t* data, uint8_t* error)
+{
+  int result = COMM_TX_FAIL;
+  uint8_t* rx_packet = (uint8_t*)malloc(RXPACKET_MAX_LEN);
+  //(length + 11 + (length/3));  // (length/3): consider stuffing
+
+  if (rx_packet == NULL)
+    return result;
+
+  result = rxPacket(port, rx_packet, ENABLE_FAST_OPTION);
+
+  if (result == COMM_SUCCESS && rx_packet[PKT_ID] == id)
+  {
+    if (error != 0)
+      *error = (uint8_t)rx_packet[PKT_ERROR];
+
+    for (uint16_t s = 0; s < length; s++)
+    {
+      data[s] = rx_packet[PKT_PARAMETER0 + s];
+    }
+    //memcpy(data, &rxpacket[PKT_PARAMETER0+1], length);
+  }
+
+  free(rx_packet);
+  //delete[] rxpacket;
+  return result;
+}
+
 int Protocol2PacketHandler::readTxRx(PortHandler *port, uint8_t id, uint16_t address, uint16_t length, uint8_t *data, uint8_t *error)
 {
   int result                  = COMM_TX_FAIL;
@@ -978,6 +1014,37 @@ int Protocol2PacketHandler::syncReadTx(PortHandler *port, uint16_t start_address
 
   for (uint16_t s = 0; s < param_length; s++)
     txpacket[PKT_PARAMETER0+4+s] = param[s];
+  //memcpy(&txpacket[PKT_PARAMETER0+4], param, param_length);
+
+  result = txPacket(port, txpacket);
+  if (result == COMM_SUCCESS)
+    port->setPacketTimeout((uint16_t)((11 + data_length) * param_length));
+
+  free(txpacket);
+  return result;
+}
+
+int Protocol2PacketHandler::fastSyncReadTx(PortHandler* port, uint16_t start_address, uint16_t data_length, uint8_t* param, uint16_t param_length)
+{
+  int result = COMM_TX_FAIL;
+
+  uint8_t* txpacket = (uint8_t*)malloc(param_length + 14 + (param_length / 3));
+  // 14: HEADER0 HEADER1 HEADER2 RESERVED ID LEN_L LEN_H INST START_ADDR_L START_ADDR_H DATA_LEN_L DATA_LEN_H CRC16_L CRC16_H
+
+  if (txpacket == NULL)
+    return result;
+
+  txpacket[PKT_ID] = BROADCAST_ID;
+  txpacket[PKT_LENGTH_L] = DXL_LOBYTE(param_length + 7); // 7: INST START_ADDR_L START_ADDR_H DATA_LEN_L DATA_LEN_H CRC16_L CRC16_H
+  txpacket[PKT_LENGTH_H] = DXL_HIBYTE(param_length + 7); // 7: INST START_ADDR_L START_ADDR_H DATA_LEN_L DATA_LEN_H CRC16_L CRC16_H
+  txpacket[PKT_INSTRUCTION] = INST_FAST_SYNC_READ;
+  txpacket[PKT_PARAMETER0 + 0] = DXL_LOBYTE(start_address);
+  txpacket[PKT_PARAMETER0 + 1] = DXL_HIBYTE(start_address);
+  txpacket[PKT_PARAMETER0 + 2] = DXL_LOBYTE(data_length);
+  txpacket[PKT_PARAMETER0 + 3] = DXL_HIBYTE(data_length);
+
+  for (uint16_t s = 0; s < param_length; s++)
+    txpacket[PKT_PARAMETER0 + 4 + s] = param[s];
   //memcpy(&txpacket[PKT_PARAMETER0+4], param, param_length);
 
   result = txPacket(port, txpacket);

@@ -157,7 +157,7 @@ int Protocol1PacketHandler::txPacket(PortHandler *port, uint8_t *txpacket)
   return COMM_SUCCESS;
 }
 
-int Protocol1PacketHandler::rxPacket(PortHandler *port, uint8_t *rxpacket)
+int Protocol1PacketHandler::rxPacket(PortHandler *port, uint8_t *rxpacket, bool fast_option)
 {
   int     result         = COMM_TX_FAIL;
 
@@ -437,6 +437,11 @@ int Protocol1PacketHandler::readRx(PortHandler *port, uint8_t id, uint16_t lengt
   return result;
 }
 
+int Protocol1PacketHandler::fastReadRx(PortHandler* port, uint8_t id, uint16_t length, uint8_t* data, uint8_t* error)
+{
+  return COMM_NOT_AVAILABLE;
+}
+
 int Protocol1PacketHandler::readTxRx(PortHandler *port, uint8_t id, uint16_t address, uint16_t length, uint8_t *data, uint8_t *error)
 {
   int result = COMM_TX_FAIL;
@@ -682,7 +687,12 @@ int Protocol1PacketHandler::regWriteTxRx(PortHandler *port, uint8_t id, uint16_t
   return result;
 }
 
-int Protocol1PacketHandler::syncReadTx(PortHandler *port, uint16_t start_address, uint16_t data_length, uint8_t *param, uint16_t param_length)
+int Protocol1PacketHandler::syncReadTx(PortHandler* port, uint16_t start_address, uint16_t data_length, uint8_t* param, uint16_t param_length)
+{
+  return COMM_NOT_AVAILABLE;
+}
+
+int Protocol1PacketHandler::fastSyncReadTx(PortHandler* port, uint16_t start_address, uint16_t data_length, uint8_t* param, uint16_t param_length)
 {
   return COMM_NOT_AVAILABLE;
 }
@@ -701,8 +711,8 @@ int Protocol1PacketHandler::syncWriteTxOnly(PortHandler *port, uint16_t start_ad
   txpacket[PKT_ID]            = BROADCAST_ID;
   txpacket[PKT_LENGTH]        = param_length + 4; // 4: INST START_ADDR DATA_LEN ... CHKSUM
   txpacket[PKT_INSTRUCTION]   = INST_SYNC_WRITE;
-  txpacket[PKT_PARAMETER0+0]  = start_address;
-  txpacket[PKT_PARAMETER0+1]  = data_length;
+  txpacket[PKT_PARAMETER0+0]  = (uint8_t)start_address;
+  txpacket[PKT_PARAMETER0+1]  = (uint8_t)data_length;
 
   for (uint16_t s = 0; s < param_length; s++)
     txpacket[PKT_PARAMETER0+2+s] = param[s];
